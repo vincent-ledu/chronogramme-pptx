@@ -2,6 +2,7 @@ import sys
 import pandas as pd
 from pptx import Presentation
 from pptx.util import Inches, Pt
+from pptx.enum.text import PP_ALIGN
 from pptx.dml.color import RGBColor
 import os
 import hashlib
@@ -86,9 +87,9 @@ for _, row in df.iterrows():
 
     text_frame = textbox.text_frame
     for paragraph in text_frame.paragraphs:
+        paragraph.alignment = PP_ALIGN.CENTER
         for run in paragraph.runs:
             run.font.size = Pt(8)
-            run.font.alignment = 1
             run.font.bold = True
             run.font.color.rgb = RGBColor(255, 255, 255)
 
@@ -120,7 +121,6 @@ for i, squad in enumerate(squads_uniques):
     for paragraph in text_frame.paragraphs:
         for run in paragraph.runs:
             run.font.size = Pt(10)
-            run.font.alignment = 1
             run.font.bold = True
             run.font.color.rgb = RGBColor(255, 255, 255)
 
