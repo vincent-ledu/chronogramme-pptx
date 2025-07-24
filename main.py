@@ -7,16 +7,20 @@ from pptx.dml.color import RGBColor
 import os
 import hashlib
 
-def squad_to_color(squad_name):
-    h = hashlib.md5(squad_name.encode()).hexdigest()
-    r = int(h[0:2], 16)
-    g = int(h[2:4], 16)
-    b = int(h[4:6], 16)
-    if r + g + b < 300:
-        r = min(255, r + 60)
-        g = min(255, g + 60)
-        b = min(255, b + 60)
-    return RGBColor(r, g, b)
+from pptx.dml.color import RGBColor
+
+RAINBOW_COLORS = [
+    RGBColor(255, 0, 0),
+    RGBColor(255, 127, 0),
+    RGBColor(255, 255, 0),
+    RGBColor(127, 255, 0),
+    RGBColor(0, 255, 0),
+    RGBColor(0, 255, 127),
+    RGBColor(0, 255, 255),
+    RGBColor(0, 127, 255),
+    RGBColor(0, 0, 255),
+    RGBColor(139, 0, 255),
+]
 
 if len(sys.argv) < 2:
     print("Usage: python generate_slide.py <fichier_excel>")
@@ -28,6 +32,13 @@ if not os.path.exists(excel_path):
     sys.exit(1)
 
 df = pd.read_excel(excel_path)
+
+# Remplace squad_to_color() par ce dictionnaire mappé
+squads_uniques = sorted(df["squad"].dropna().unique())
+squad_color_map = {
+    squad: RAINBOW_COLORS[i % len(RAINBOW_COLORS)]
+    for i, squad in enumerate(squads_uniques)
+}
 
 expected_columns = {"Produit", "solution", "planification", "squad"}
 if not expected_columns.issubset(df.columns):
@@ -80,10 +91,47 @@ for _, row in df.iterrows():
     )
     textbox.text = f"{produit}-{solution}"
 
+    # Appliquer style
     fill = textbox.fill
     fill.solid()
-    fill.fore_color.rgb = squad_to_color(squad)
-    textbox.line.color.rgb = RGBColor(0, 0, 0)
+    fill.fore_color.rgb = squad_color_map[squad]
+
+    # 🔶 Si mosart = 1 → contour orange
+    if row.get("mosart", 0) == 1:
+        textbox.line.width = Pt(2.5)
+        textbox.line.color.rgb = RGBColor(255, 102, 0)
+
+    else:
+        textbox.line.color.rgb = RGBColor(0, 0, 0)
+
+    # Texte centré blanc
+    text_frame = textbox.text_frame
+    for paragraph in text_frame.paragraphs:
+        paragraph.alignment = PP_ALIGN.CENTER
+        for run in paragraph.runs:
+            run.font.size = Pt(8)
+            run.font.bold = True
+            run.font.color.rgb = RGBColor(255, 255, 255)
+
+    # 🐳 Icône Kubernetes à gauche si full kube = 1
+    if row.get("full kube", 0) == 1:
+        slide.shapes.add_picture(
+            "kubernetes.png",
+            left=left - Inches(0.15),
+            top=top,
+            width=Inches(0.3),
+            height=Inches(0.3)
+        )
+
+    # ⚡ Icône éclair rouge si critique = oui
+    if str(row.get("critique", "")).strip().lower() == "oui":
+        slide.shapes.add_picture(
+            "eclair.png",
+            left=left + width - Inches(0.15),
+            top=top + Inches(0.02),
+            width=Inches(0.3),
+            height=Inches(0.3)
+        )
 
     text_frame = textbox.text_frame
     for paragraph in text_frame.paragraphs:
@@ -114,7 +162,7 @@ for i, squad in enumerate(squads_uniques):
 
     fill = box.fill
     fill.solid()
-    fill.fore_color.rgb = squad_to_color(squad)
+    fill.fore_color.rgb = squad_color_map[squad]
     box.line.color.rgb = RGBColor(0, 0, 0)
 
     text_frame = box.text_frame
