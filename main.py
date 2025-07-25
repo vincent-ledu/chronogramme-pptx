@@ -115,8 +115,8 @@ for _, row in df.iterrows():
     color = squad_color_map.get(squad, RGBColor(200, 200, 200))  # Gris si inconnu
     fill.fore_color.rgb = color
 
-    # 🔶 Si mosart = 1 → contour orange
-    if row.get(col_mosart, 0) == 1:
+    # 🔶 Si mosart != "" → contour orange
+    if str(row.get(col_mosart, "")).strip().startswith("lot"):
         textbox.line.width = Pt(2.5)
         textbox.line.color.rgb = RGBColor(255, 102, 0)
 
@@ -132,8 +132,8 @@ for _, row in df.iterrows():
             run.font.bold = True
             run.font.color.rgb = RGBColor(255, 255, 255)
 
-    # 🐳 Icône Kubernetes à gauche si full kube = 1
-    if row.get(col_kube, 0) == 1:
+    # 🐳 Icône Kubernetes à gauche si full kube = oui
+    if str(row.get(col_kube, "")).strip().lower() == "oui":
         slide.shapes.add_picture(
             "kubernetes.png",
             left=left - Inches(0.15),
