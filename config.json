@@ -1,0 +1,17 @@
+{
+  "colonne_produit": "Produit",
+  "colonne_solution": "solution",
+  "colonne_planification": "planification",
+  "colonne_squad": "squad",
+  "colonne_full_kube": "full kube",
+  "colonne_mosart": "mosart",
+  "colonne_critique": "critique",
+  "squad_colors": {
+    "squad 1": "#92D050",
+    "squad 2": "#00B050",
+    "squad 3": "#00B0F0",
+    "squad 4": "#0070C0",
+    "squad 5": "#002060",
+    "squad 6": "#7030A0"
+  }
+}
