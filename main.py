@@ -10,16 +10,12 @@ import hashlib
 from pptx.dml.color import RGBColor
 
 RAINBOW_COLORS = [
-    RGBColor(255, 0, 0),
-    RGBColor(255, 127, 0),
-    RGBColor(255, 255, 0),
-    RGBColor(127, 255, 0),
-    RGBColor(0, 255, 0),
-    RGBColor(0, 255, 127),
-    RGBColor(0, 255, 255),
-    RGBColor(0, 127, 255),
-    RGBColor(0, 0, 255),
-    RGBColor(139, 0, 255),
+    RGBColor(146, 208, 80),
+    RGBColor(0, 176, 80),
+    RGBColor(0, 176, 240),
+    RGBColor(0, 112, 192),
+    RGBColor(0, 32, 96),
+    RGBColor(112, 48, 160)
 ]
 
 if len(sys.argv) < 2:
@@ -40,9 +36,9 @@ squad_color_map = {
     for i, squad in enumerate(squads_uniques)
 }
 
-expected_columns = {"Produit", "solution", "planification", "squad"}
+expected_columns = {"Identifiant Produit", "Id Solution", "Planification test : Tx/2025 ou Tx/2026", "Squad"}
 if not expected_columns.issubset(df.columns):
-    print("Le fichier Excel doit contenir : Produit, solution, planification, squad")
+    print("Le fichier Excel doit contenir : Identifiant Produit", "Id Solution", "Planification test : Tx/2025 ou Tx/2026", "Squad")
     sys.exit(1)
 
 positions = {
@@ -60,15 +56,15 @@ pptx_path = "exemple_chronogramme.pptx"
 prs = Presentation(pptx_path)
 slide = prs.slides[0]
 
-height = Inches(0.3)
+height = Inches(0.22)
 width = Inches(1.0)
-base_top = Inches(2.0)
-vspace = Inches(0.4)
+base_top = Inches(1.5)
+vspace = Inches(0.3)
 ligne_par_trimestre = {}
 
 # Génération des boîtes principales
 for _, row in df.iterrows():
-    produit = str(row["Produit"])
+    produit = str(row["produit"])
     solution = str(row["solution"])
     trimestre = str(row["planification"]).strip()
     squad = str(row["squad"]).strip()
@@ -119,8 +115,8 @@ for _, row in df.iterrows():
             "kubernetes.png",
             left=left - Inches(0.15),
             top=top,
-            width=Inches(0.3),
-            height=Inches(0.3)
+            width=Inches(0.22),
+            height=Inches(0.22)
         )
 
     # ⚡ Icône éclair rouge si critique = oui
@@ -129,8 +125,8 @@ for _, row in df.iterrows():
             "eclair.png",
             left=left + width - Inches(0.15),
             top=top + Inches(0.02),
-            width=Inches(0.3),
-            height=Inches(0.3)
+            width=Inches(0.22),
+            height=Inches(0.22)
         )
 
     text_frame = textbox.text_frame
@@ -144,10 +140,10 @@ for _, row in df.iterrows():
 # ✅ Ajouter la légende en bas à gauche
 squads_uniques = sorted(df["squad"].dropna().unique())
 legend_left = Inches(0.5)
-legend_top_base = Inches(6.0)
-legend_height = Inches(0.4)
+legend_top_base = Inches(5.5)
+legend_height = Inches(0.3)
 legend_width = Inches(3.0)
-legend_vspace = Inches(0.45)
+legend_vspace = Inches(0.32)
 
 for i, squad in enumerate(squads_uniques):
     top = legend_top_base + i * legend_vspace
