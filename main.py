@@ -7,9 +7,21 @@ from pptx.dml.color import RGBColor
 import os
 from pptx.dml.color import RGBColor
 import json
+import argparse
 
-# Charger la configuration
-with open("config.json", "r", encoding="utf-8") as f:
+parser = argparse.ArgumentParser(description="Génère un slide chronogramme à partir d’un fichier Excel.")
+parser.add_argument("excel_file", help="Chemin vers le fichier Excel contenant les données.")
+parser.add_argument("--config", default="config.json", help="Chemin vers le fichier JSON de configuration (défaut: config.json).")
+
+args = parser.parse_args()
+excel_path = args.excel_file
+config_path = args.config
+
+if not os.path.exists(config_path):
+    print(f"❌ Fichier de configuration introuvable : {config_path}")
+    sys.exit(1)
+
+with open(config_path, "r", encoding="utf-8") as f:
     config = json.load(f)
 
 col_produit = config["colonne_produit"]
