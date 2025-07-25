@@ -76,7 +76,7 @@ slide = prs.slides[0]
 
 height = Inches(0.22)
 width = Inches(1.0)
-base_top = Inches(2.0)
+base_top = Inches(1.5)
 vspace = Inches(0.27)
 ligne_par_trimestre = {}
 
