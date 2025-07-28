@@ -31,6 +31,8 @@ col_squad = config["colonne_squad"]
 col_kube = config["colonne_full_kube"]
 col_mosart = config["colonne_mosart"]
 col_critique = config["colonne_critique"]
+col_validate = config["colonne_validate"]
+col_decom = config["colonne_decom"]
 
 def hex_to_rgbcolor(hex_code):
     hex_code = hex_code.lstrip("#")
@@ -115,13 +117,17 @@ for _, row in df.iterrows():
     color = squad_color_map.get(squad, RGBColor(200, 200, 200))  # Gris si inconnu
     fill.fore_color.rgb = color
 
-    # 🔶 Si mosart != "" → contour orange
+    textbox.line.color.rgb = RGBColor(0, 0, 0)
+
+    # 🔶 Si mosart startwith = "lot" → contour orange
     if str(row.get(col_mosart, "")).strip().startswith("lot"):
         textbox.line.width = Pt(2.5)
         textbox.line.color.rgb = RGBColor(255, 102, 0)
 
-    else:
-        textbox.line.color.rgb = RGBColor(0, 0, 0)
+    # Si decom = "oui" → contour gris
+    if str(row.get(col_decom, "")).strip().lower() == "oui":
+        textbox.line.width = Pt(2.5)
+        textbox.line.color.rgb = RGBColor(80, 80, 80)
 
     # Texte centré blanc
     text_frame = textbox.text_frame
@@ -148,6 +154,16 @@ for _, row in df.iterrows():
             "eclair.png",
             left=left + width - Inches(0.15),
             top=top + Inches(0.02),
+            width=Inches(0.22),
+            height=Inches(0.22)
+        )
+
+    # Icône check à au milieu si validé = oui
+    if str(row.get(col_validate, "")).strip().lower() == "oui":
+        slide.shapes.add_picture(
+            "check.png",
+            left=left + Inches(0.15),
+            top=top,
             width=Inches(0.22),
             height=Inches(0.22)
         )

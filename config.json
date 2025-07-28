@@ -5,6 +5,8 @@
   "colonne_squad": "squad",
   "colonne_full_kube": "full kube",
   "colonne_mosart": "mosart",
+  "colonne_decom": "decom",
+  "colonne_validate": "validé",
   "colonne_critique": "critique",
   "squad_colors": {
     "squad 1": "#92D050",
