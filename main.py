@@ -8,6 +8,21 @@ import os
 from pptx.dml.color import RGBColor
 import json
 import argparse
+import re
+
+# Cloner les lignes critiques à l’année suivante
+def dupliquer_ligne_critique(df, col_planif, col_critique):
+    lignes_critiques = df[df[col_critique].astype(str).str.strip().str.lower() == "oui"].copy()
+
+    def trimestre_suivant_annee(val):
+        match = re.match(r"(T[1-4])/(\d{4})", str(val).strip())
+        if match:
+            tri, annee = match.groups()
+            return f"{tri}/{int(annee) + 1}"
+        return val  # valeur inchangée si format non reconnu
+
+    lignes_critiques[col_planif] = lignes_critiques[col_planif].apply(trimestre_suivant_annee)
+    return pd.concat([df, lignes_critiques], ignore_index=True)
 
 parser = argparse.ArgumentParser(description="Génère un slide chronogramme à partir d’un fichier Excel.")
 parser.add_argument("excel_file", help="Chemin vers le fichier Excel contenant les données.")
@@ -29,6 +44,7 @@ col_solution = config["colonne_solution"]
 col_planif = config["colonne_planification"]
 col_squad = config["colonne_squad"]
 col_kube = config["colonne_full_kube"]
+col_z = config["colonne_full_z"]
 col_mosart = config["colonne_mosart"]
 col_critique = config["colonne_critique"]
 
@@ -46,6 +62,10 @@ if not os.path.exists(excel_path):
     sys.exit(1)
 
 df = pd.read_excel(excel_path)
+
+# planifier à n+1 si critique
+df = dupliquer_ligne_critique(df, col_planif, col_critique)
+
 
 # Remplace squad_to_color() par ce dictionnaire mappé
 squads_uniques = sorted(df[col_squad].dropna().unique())

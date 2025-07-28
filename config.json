@@ -4,6 +4,7 @@
   "colonne_planification": "planification",
   "colonne_squad": "squad",
   "colonne_full_kube": "full kube",
+  "colonne_full_z": "full z",
   "colonne_mosart": "mosart",
   "colonne_critique": "critique",
   "squad_colors": {
