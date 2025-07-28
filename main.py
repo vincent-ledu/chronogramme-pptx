@@ -168,6 +168,16 @@ for _, row in df.iterrows():
             height=Inches(0.22)
         )
 
+    # Z Icône Z à gauche si full Z = oui
+    if str(row.get(col_z, "")).strip().lower() == "oui":
+        slide.shapes.add_picture(
+            "z.png",
+            left=left - Inches(0.15),
+            top=top,
+            width=Inches(0.22),
+            height=Inches(0.22)
+        )
+
     # ⚡ Icône éclair rouge si critique = oui
     if str(row.get(col_critique, "")).strip().lower() == "oui":
         slide.shapes.add_picture(
