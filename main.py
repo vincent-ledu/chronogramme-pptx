@@ -48,7 +48,8 @@ col_realise = config["colonne_realise"]
 # --- Icônes ---
 icone_kube = config["icone_kube"]
 icone_critique = config["icone_critique"]
-icone_check = config["icone_check"]
+icone_check_green = config["icone_check_green"]
+icone_check_blue = config["icone_check_blue"]
 icone_z = config["icone_z"]
 icone_reconstruction = config["icone_reconstruction"]
 icone_restauration = config["icone_restauration"]
@@ -73,7 +74,7 @@ positions = {
 positions_valides = set(positions.keys())
 
 # --- Lecture des données ---
-df = pd.read_excel(excel_path)
+df = pd.read_excel(excel_path, keep_default_na=False)
 tribues = df[col_tribue].dropna().unique()
 
 # --- Clé de tri temporelle ---
@@ -86,14 +87,25 @@ def trimestre_to_sort_key(trimestre):
 
 for tribue in tribues:
     df_tribue = df[df[col_tribue] == tribue].copy()
-
+    
     # Nettoyage des booléens
     bool_cols = [col_kube, col_critique, col_mosart, col_decom, col_validate, col_z]
     for col in bool_cols:
-        df_tribue[col] = df_tribue[col].astype(str).str.strip().str.lower().map(lambda x: x == "oui").astype(int)
+        df_tribue[col] = df_tribue[col].astype(str).str.strip().str.lower().map(lambda x: x == "oui" or x.startswith("lot")).astype(int)
 
     df_tribue[col_type] = df_tribue[col_type].fillna("")
     df_tribue[col_realise] = df_tribue[col_realise].fillna("")
+    
+    # Sauvegarde le nombre de ligne initial
+    initial_count = len(df_tribue)
+
+    # Filtre les lignes avec "réalisé" = NA ou NR
+    df_tribue = df_tribue[~df_tribue[col_realise].astype(str).str.strip().str.upper().isin(["NR", "NA"])]
+    
+    exclues_count = initial_count - len(df_tribue)
+    if exclues_count > 0:
+        print(f"ℹ️  {exclues_count} lignes(s) exclue(s) pour '{tribue}' car 'réalisé' = NA ou NR")
+
     df_tribue["__sort_key"] = df_tribue[col_planif].apply(trimestre_to_sort_key)
 
     fusionnees = (
@@ -144,7 +156,6 @@ for tribue in tribues:
             t: (realises[i] == "oui" if i < len(realises) else False)
             for i, t in enumerate(types)
         }
-
         color = squad_color_map.get(squad, RGBColor(160, 160, 160))
 
         if trimestre in positions_valides:
@@ -187,13 +198,15 @@ for tribue in tribues:
 
         if "reconstruction" in types and not types_realises.get("reconstruction", False):
             target_slide.shapes.add_picture(icone_reconstruction, left - Inches(0.0), bot_top, Inches(0.2), Inches(0.2))
-        if "restauration" in types and not types_realises.get("restauration", False):
+        if "restauration bdd" in types and not types_realises.get("restauration bdd", False):
             target_slide.shapes.add_picture(icone_restauration, left + width / 2 - Inches(0.1), bot_top, Inches(0.2), Inches(0.2))
-        if "resynchro" in types and not types_realises.get("resynchro", False):
+        if "resynchronisation" in types and not types_realises.get("resynchronisation", False):
             target_slide.shapes.add_picture(icone_resynchro, left + width - Inches(0.2), bot_top, Inches(0.2), Inches(0.2))
 
+        if validate:
+            target_slide.shapes.add_picture(icone_check_blue, left + width / 2 - Inches(0.22), bot_top, Inches(0.22), Inches(0.22))
         if all(types_realises.get(t, False) for t in types if t):
-            target_slide.shapes.add_picture(icone_check, left + width / 2 - Inches(0.11), top + Inches(0.01), Inches(0.22), Inches(0.22))
+            target_slide.shapes.add_picture(icone_check_green, left + width / 2 + Inches(0.22), bot_top, Inches(0.22), Inches(0.22))
 
         if full_kube:
             target_slide.shapes.add_picture(icone_kube, left - Inches(0.15), top, Inches(0.22), Inches(0.22))
@@ -224,6 +237,6 @@ for tribue in tribues:
                 run.font.bold = True
                 run.font.color.rgb = RGBColor(255, 255, 255)
 
-    nom_fichier = f"chronogramme_{tribue.replace(' ', '_')}.pptx"
+    nom_fichier = f"output/chronogramme_{tribue.replace(' ', '_')}.pptx"
     prs.save(nom_fichier)
     print(f"✅ Fichier généré pour {tribue} : {nom_fichier}")
