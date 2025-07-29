@@ -157,7 +157,7 @@ for tribue in tribues:
             for i, t in enumerate(types)
         }
         color = squad_color_map.get(squad, RGBColor(160, 160, 160))
-
+        complement = ""
         if trimestre in positions_valides:
             left = positions[trimestre]
             ligne = ligne_par_trimestre.get(trimestre, 0)
@@ -169,9 +169,11 @@ for tribue in tribues:
             top = Inches(1.0 + lignes_inconnues * 0.4)
             lignes_inconnues += 1
             target_slide = slide_invalide
+            complement = f"\n{trimestre}"
+            print(f"⚠️  {produit}-{solution} n'est pas sur un trimestre valide : {trimestre}")
 
         textbox = target_slide.shapes.add_shape(1, left, top, width, height)
-        textbox.text = f"{produit}-{solution}"
+        textbox.text = f"{produit}-{solution}{complement}"
 
         fill = textbox.fill
         fill.solid()
