@@ -5,17 +5,17 @@ from pptx.util import Inches, Pt
 from pptx.enum.text import PP_ALIGN
 from pptx.dml.color import RGBColor
 import os
-from pptx.dml.color import RGBColor
 import json
 import argparse
 import re
-from pptx.util import Inches
 
-parser = argparse.ArgumentParser(description="Génère un slide chronogramme à partir d’un fichier Excel.")
-parser.add_argument("excel_file", help="Chemin vers le fichier Excel contenant les données.")
-parser.add_argument("--config", default="config.json", help="Chemin vers le fichier JSON de configuration (défaut: config.json).")
-
+# --- Argument parser ---
+parser = argparse.ArgumentParser(description="Génère des slides chronogrammes par tribue.")
+parser.add_argument("excel_file", help="Fichier Excel des données")
+parser.add_argument("--config", default="config.json", help="Fichier de configuration JSON")
 args = parser.parse_args()
+
+# --- Chargement fichiers ---
 excel_path = args.excel_file
 config_path = args.config
 
@@ -26,15 +26,11 @@ if not os.path.exists(config_path):
 with open(config_path, "r", encoding="utf-8") as f:
     config = json.load(f)
 
-if len(sys.argv) < 2:
-    print("Usage: python generate_slide.py <fichier_excel>")
-    sys.exit(1)
-
-excel_path = sys.argv[1]
 if not os.path.exists(excel_path):
-    print(f"Fichier introuvable: {excel_path}")
+    print(f"Fichier Excel introuvable : {excel_path}")
     sys.exit(1)
 
+# --- Colonnes ---
 col_produit = config["colonne_produit"]
 col_solution = config["colonne_solution"]
 col_planif = config["colonne_planification"]
@@ -46,101 +42,110 @@ col_mosart = config["colonne_mosart"]
 col_critique = config["colonne_critique"]
 col_validate = config["colonne_validate"]
 col_decom = config["colonne_decom"]
+col_type = config["colonne_type"]
+col_realise = config["colonne_realise"]
 
-icone_kube = config.get("icone_kube", "kubernetes.png")
-icone_critique = config.get("icone_critique", "eclair.png")
-icone_check = config.get("icone_check", "check.png")
-icone_z = config.get("icone_z", "z.png")
+# --- Icônes ---
+icone_kube = config["icone_kube"]
+icone_critique = config["icone_critique"]
+icone_check = config["icone_check"]
+icone_z = config["icone_z"]
+icone_reconstruction = config["icone_reconstruction"]
+icone_restauration = config["icone_restauration"]
+icone_resynchro = config["icone_resynchro"]
 
+# --- Couleurs squad ---
 def hex_to_rgbcolor(hex_code):
     hex_code = hex_code.lstrip("#")
     return RGBColor(int(hex_code[0:2], 16), int(hex_code[2:4], 16), int(hex_code[4:6], 16))
 
-
-# Remplace squad_to_color() par ce dictionnaire mappé
-#squads_uniques = sorted(df[col_squad].dropna().unique())
 squad_colors_raw = config.get("squad_colors", {})
 squad_color_map = {
     squad: hex_to_rgbcolor(hex_code)
     for squad, hex_code in squad_colors_raw.items()
 }
 
+# --- Positions temporelles ---
 positions = {
-    "T1/2025": Inches(1.0),
-    "T2/2025": Inches(2.5),
-    "T3/2025": Inches(4.0),
-    "T4/2025": Inches(5.5),
-    "T1/2026": Inches(7.0),
-    "T2/2026": Inches(8.5),
-    "T3/2026": Inches(10.0),
-    "T4/2026": Inches(11.5),
+    "T1/2025": Inches(1.0), "T2/2025": Inches(2.5), "T3/2025": Inches(4.0), "T4/2025": Inches(5.5),
+    "T1/2026": Inches(7.0), "T2/2026": Inches(8.5), "T3/2026": Inches(10.0), "T4/2026": Inches(11.5),
 }
+positions_valides = set(positions.keys())
 
+# --- Lecture des données ---
 df = pd.read_excel(excel_path)
 tribues = df[col_tribue].dropna().unique()
-expected_columns = {col_produit, col_solution, col_planif, col_squad}
-if not expected_columns.issubset(df.columns):
-    print(f"Le fichier Excel doit contenir : {expected_columns}")
-    sys.exit(1)
 
-
-# Cloner les lignes critiques à l’année suivante
-def dupliquer_ligne_critique(df):
-    lignes_critiques = df[df[col_critique].astype(str).str.strip().str.lower() == "oui"].copy()
-    def trimestre_plus_1(val):
-        match = re.match(r"(T[1-4])/(\d{4})", str(val).strip())
-        if match:
-            tri, annee = match.groups()
-            return f"{tri}/{int(annee)+1}"
-        return val
-    lignes_critiques[col_planif] = lignes_critiques[col_planif].apply(trimestre_plus_1)
-    return pd.concat([df, lignes_critiques], ignore_index=True)
-
+# --- Clé de tri temporelle ---
+def trimestre_to_sort_key(trimestre):
+    match = re.match(r"T([1-4])/(\d{4})", str(trimestre).strip())
+    if match:
+        t, y = match.groups()
+        return int(y) * 10 + int(t)
+    return float('inf')
 
 for tribue in tribues:
     df_tribue = df[df[col_tribue] == tribue].copy()
-    df_tribue = dupliquer_ligne_critique(df_tribue)
 
-    # ➤ ici, appliquer :
-    # - duplication critique (df_tribue = dupliquer_ligne_critique(df_tribue, ...))
-    # planifier à n+1 si critique
-    # - gestion planification
-    # - génération du slide
+    # Nettoyage des booléens
+    bool_cols = [col_kube, col_critique, col_mosart, col_decom, col_validate, col_z]
+    for col in bool_cols:
+        df_tribue[col] = df_tribue[col].astype(str).str.strip().str.lower().map(lambda x: x == "oui").astype(int)
 
-    pptx_path = "exemple_chronogramme.pptx"
-    prs = Presentation(pptx_path)
+    df_tribue[col_type] = df_tribue[col_type].fillna("")
+    df_tribue[col_realise] = df_tribue[col_realise].fillna("")
+    df_tribue["__sort_key"] = df_tribue[col_planif].apply(trimestre_to_sort_key)
+
+    fusionnees = (
+        df_tribue.sort_values("__sort_key")
+        .groupby([col_produit, col_solution])
+        .agg({
+            col_planif: "first",
+            col_tribue: "first",
+            col_squad: "first",
+            col_kube: "max",
+            col_mosart: "max",
+            col_critique: "max",
+            col_decom: "max",
+            col_validate: "max",
+            col_z: "max",
+            col_type: lambda x: list(x),
+            col_realise: lambda x: list(x)
+        })
+        .reset_index()
+    )
+
+    prs = Presentation("exemple_chronogramme.pptx")
     slide = prs.slides[0]
-
-    # Slide alternatif pour planification absente ou invalide
     slide_invalide = prs.slides[1]
-    positions_valides = set(positions.keys())
 
     height = Inches(0.22)
     width = Inches(1.0)
     base_top = Inches(1.5)
-    vspace = Inches(0.27)
+    vspace = Inches(0.36)
     ligne_par_trimestre = {}
     lignes_inconnues = 0
 
+    for _, row in fusionnees.iterrows():
+        produit = str(row[col_produit])
+        solution = str(row[col_solution])
+        trimestre = str(row[col_planif]).strip()
+        squad = str(row[col_squad]).strip()
+        full_kube = row[col_kube] == 1
+        mosart = row[col_mosart] == 1
+        decom = row[col_decom] == 1
+        critique = row[col_critique] == 1
+        validate = row[col_validate] == 1
+        full_z = row[col_z] == 1
+        types = [str(t).strip().lower() for t in row[col_type]]
+        realises = [str(r).strip().lower() for r in row[col_realise]]
 
-    # ... génération du contenu comme avant (boîtes, couleurs, icônes, etc.) ...
-    # Génération des boîtes principales
-    for _, row in df_tribue.iterrows():
-        produit = str(row.get(col_produit, ""))
-        solution = str(row.get(col_solution, ""))
-        trimestre = str(row.get(col_planif, "")).strip()
-        squad = str(row.get(col_squad, "")).strip()
-        full_kube = str(row.get(col_kube, "")).strip().lower() == "oui"
-        mosart = str(row.get(col_mosart, "")).strip().lower().startswith("lot")
-        decom = str(row.get(col_decom, "")).strip().lower() == "oui"
-        critique = str(row.get(col_critique, "")).strip().lower() == "oui"
-        validate = str(row.get(col_validate, "")).strip().lower() == "oui"
-        full_z = str(row.get(col_z, "")).strip().lower() == "oui"
+        types_realises = {
+            t: (realises[i] == "oui" if i < len(realises) else False)
+            for i, t in enumerate(types)
+        }
 
         color = squad_color_map.get(squad, RGBColor(160, 160, 160))
-
-        if trimestre not in positions:
-            print(f"⚠️ {produit}-{solution} : Trimestre inconnu ignoré : {trimestre}")
 
         if trimestre in positions_valides:
             left = positions[trimestre]
@@ -154,33 +159,22 @@ for tribue in tribues:
             lignes_inconnues += 1
             target_slide = slide_invalide
 
-        textbox = target_slide.shapes.add_shape(
-            autoshape_type_id=1,
-            left=left,
-            top=top,
-            width=width,
-            height=height
-        )
+        textbox = target_slide.shapes.add_shape(1, left, top, width, height)
         textbox.text = f"{produit}-{solution}"
 
-        # Appliquer style
         fill = textbox.fill
         fill.solid()
         fill.fore_color.rgb = color
 
         line = textbox.line
         line.color.rgb = RGBColor(0, 0, 0)
-        # 🔶 Si mosart startwith = "lot" → contour orange
         if mosart:
             line.width = Pt(2.5)
             line.color.rgb = RGBColor(255, 102, 0)
-        
-        # Si decom = "oui" → contour gris
         if decom:
-            textbox.line.width = Pt(2.5)
-            textbox.line.color.rgb = RGBColor(80, 80, 80)
+            line.width = Pt(2.5)
+            line.color.rgb = RGBColor(80, 80, 80)
 
-        # Texte centré blanc
         text_frame = textbox.text_frame
         for paragraph in text_frame.paragraphs:
             paragraph.alignment = PP_ALIGN.CENTER
@@ -189,77 +183,47 @@ for tribue in tribues:
                 run.font.bold = True
                 run.font.color.rgb = RGBColor(255, 255, 255)
 
-        # 🐳 Icône Kubernetes à gauche si full kube = oui
+        bot_top = top + Inches(0.12)
+
+        if "reconstruction" in types and not types_realises.get("reconstruction", False):
+            target_slide.shapes.add_picture(icone_reconstruction, left - Inches(0.0), bot_top, Inches(0.2), Inches(0.2))
+        if "restauration" in types and not types_realises.get("restauration", False):
+            target_slide.shapes.add_picture(icone_restauration, left + width / 2 - Inches(0.1), bot_top, Inches(0.2), Inches(0.2))
+        if "resynchro" in types and not types_realises.get("resynchro", False):
+            target_slide.shapes.add_picture(icone_resynchro, left + width - Inches(0.2), bot_top, Inches(0.2), Inches(0.2))
+
+        if all(types_realises.get(t, False) for t in types if t):
+            target_slide.shapes.add_picture(icone_check, left + width / 2 - Inches(0.11), top + Inches(0.01), Inches(0.22), Inches(0.22))
+
         if full_kube:
-            target_slide.shapes.add_picture(
-                icone_kube,
-                left=left - Inches(0.15),
-                top=top,
-                width=Inches(0.22),
-                height=Inches(0.22)
-            )
-
-        # Z Icône Z à gauche si full Z = oui
+            target_slide.shapes.add_picture(icone_kube, left - Inches(0.15), top, Inches(0.22), Inches(0.22))
         if full_z:
-            target_slide.shapes.add_picture(
-                icone_z,
-                left=left - Inches(0.15),
-                top=top,
-                width=Inches(0.22),
-                height=Inches(0.22)
-            )
-
-        # ⚡ Icône éclair rouge si critique = oui
+            target_slide.shapes.add_picture(icone_z, left - Inches(0.15), top, Inches(0.22), Inches(0.22))
         if critique:
-            target_slide.shapes.add_picture(
-                icone_critique,
-                left=left + width - Inches(0.15),
-                top=top + Inches(0.02),
-                width=Inches(0.22),
-                height=Inches(0.22)
-            )
+            target_slide.shapes.add_picture(icone_critique, left + width - Inches(0.15), top + Inches(0.02), Inches(0.22), Inches(0.22))
 
-        # Icône check à au milieu si validé = oui
-        if validate:
-            target_slide.shapes.add_picture(
-                icone_check,
-                left=left + Inches(0.15),
-                top=top,
-                width=Inches(0.22),
-                height=Inches(0.22)
-            )
-
-
-    # ✅ Ajouter la légende en bas à gauche
-    squads_uniques = sorted(df_tribue[col_squad].dropna().unique())
     legend_left = Inches(0.5)
     legend_top_base = Inches(5.5)
     legend_height = Inches(0.3)
     legend_width = Inches(3.0)
     legend_vspace = Inches(0.32)
 
+    squads_uniques = sorted(fusionnees[col_squad].dropna().unique())
     for i, squad in enumerate(squads_uniques):
         top = legend_top_base + i * legend_vspace
-        box = slide.shapes.add_shape(
-            autoshape_type_id=1,
-            left=legend_left,
-            top=top,
-            width=legend_width,
-            height=legend_height
-        )
+        box = slide.shapes.add_shape(1, legend_left, top, legend_width, legend_height)
         box.text = squad
         box.fill.solid()
-        box.fill.fore_color.rgb = squad_color_map[squad]
+        box.fill.fore_color.rgb = squad_color_map.get(squad, RGBColor(200, 200, 200))
         box.line.color.rgb = RGBColor(0, 0, 0)
-
         text_frame = box.text_frame
         for paragraph in text_frame.paragraphs:
+            paragraph.alignment = PP_ALIGN.CENTER
             for run in paragraph.runs:
                 run.font.size = Pt(10)
                 run.font.bold = True
                 run.font.color.rgb = RGBColor(255, 255, 255)
-    
-    
+
     nom_fichier = f"chronogramme_{tribue.replace(' ', '_')}.pptx"
     prs.save(nom_fichier)
     print(f"✅ Fichier généré pour {tribue} : {nom_fichier}")
