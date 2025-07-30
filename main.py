@@ -12,11 +12,13 @@ import re
 import hashlib
 
 # 🛠️ Argument parser
-parser = argparse.ArgumentParser(description="Génère des slides chronogrammes par tribue.")
+parser = argparse.ArgumentParser(description="Génère des slides chronogrammes par tribu.")
 parser.add_argument("excel_file", help="Fichier Excel des données")
 parser.add_argument("--config", default="config.json", help="Fichier de configuration JSON")
 parser.add_argument("--out", default=".", help="Répertoire de sortie pour les fichiers PPTX")
 parser.add_argument("--template", default="exemple_chronogramme.pptx", help="Powerpoint modèle pour les slides")
+parser.add_argument("--tribu", help="Nom exact de la tribu à traiter (optionnel)")
+
 args = parser.parse_args()
 
 # 📂 Chargement des fichiers
@@ -46,7 +48,7 @@ with open(config_path, "r", encoding="utf-8") as f:
 col_produit = config["colonne_produit"]
 col_solution = config["colonne_solution"]
 col_planif = config["colonne_planification"]
-col_tribue = config["colonne_tribue"]
+col_tribu = config["colonne_tribu"]
 col_squad = config["colonne_squad"]
 col_kube = config["colonne_full_kube"]
 col_z = config["colonne_full_z"]
@@ -87,7 +89,16 @@ positions_valides = set(positions.keys())
 
 # 📥 Lecture des données Excel
 df = pd.read_excel(excel_path, keep_default_na=False)
-tribues = df[col_tribue].dropna().unique()
+if args.tribu:
+    df = df[df[col_tribu] == args.tribu]
+    if df.empty:
+        print(f"❌ Aucune donnée trouvée pour la tribu : {args.tribu}")
+        sys.exit(1)
+    tribus = [args.tribu]
+else:
+    tribus = df[col_tribu].dropna().unique()
+
+print(f"ℹ️  Tribu(s) trouvée(s) : {', '.join(tribus)}")
 
 # 🔢 Fonction pour trier les trimestres
 def trimestre_to_sort_key(trimestre):
@@ -119,37 +130,37 @@ def generate_color_from_string(s):
         r, g, b = min(255, r + 60), min(255, g + 60), min(255, b + 60)
     return RGBColor(r, g, b)
 
-# 🌀 Boucle principale par tribue
-for tribue in tribues:
-    df_tribue = df[df[col_tribue] == tribue].copy()
+# 🌀 Boucle principale par tribu
+for tribu in tribus:
+    df_tribu = df[df[col_tribu] == tribu].copy()
 
     # 🧼 Nettoyage des colonnes booléennes
     bool_cols = [col_kube, col_critique, col_mosart, col_decom, col_validate, col_z]
     for col in bool_cols:
-        df_tribue[col] = df_tribue[col].astype(str).str.strip().str.lower().map(lambda x: x == "oui" or x.startswith("lot")).astype(int)
+        df_tribu[col] = df_tribu[col].astype(str).str.strip().str.lower().map(lambda x: x == "oui" or x.startswith("lot")).astype(int)
 
     # 🧱 Nettoyage des colonnes texte
-    df_tribue[col_type] = df_tribue[col_type].fillna("")
-    df_tribue[col_realise] = df_tribue[col_realise].fillna("")
+    df_tribu[col_type] = df_tribu[col_type].fillna("")
+    df_tribu[col_realise] = df_tribu[col_realise].fillna("")
 
     # 🚫 Exclusion des lignes avec "NA" ou "NR"
-    initial_count = len(df_tribue)
-    df_tribue = df_tribue[~df_tribue[col_realise].astype(str).str.strip().str.upper().isin(["NR", "NA"])]
-    exclues_count = initial_count - len(df_tribue)
+    initial_count = len(df_tribu)
+    df_tribu = df_tribu[~df_tribu[col_realise].astype(str).str.strip().str.upper().isin(["NR", "NA"])]
+    exclues_count = initial_count - len(df_tribu)
     
     if exclues_count > 0:
-        print(f"ℹ️  {exclues_count} lignes(s) exclue(s) pour '{tribue}' car 'réalisé' = NA ou NR")
+        print(f"ℹ️  {exclues_count} lignes(s) exclue(s) pour '{tribu}' car 'réalisé' = NA ou NR")
 
     # 🔢 Tri temporel
-    df_tribue["__sort_key"] = df_tribue[col_planif].apply(trimestre_to_sort_key)
+    df_tribu["__sort_key"] = df_tribu[col_planif].apply(trimestre_to_sort_key)
 
     # 📊 Fusion des lignes produit/solution
     fusionnees = (
-        df_tribue.sort_values("__sort_key")
+        df_tribu.sort_values("__sort_key")
         .groupby([col_produit, col_solution])
         .agg({
             col_planif: "first",
-            col_tribue: "first",
+            col_tribu: "first",
             col_squad: "first",
             col_kube: "max",
             col_mosart: "max",
@@ -164,7 +175,7 @@ for tribue in tribues:
     )
 
     # 🔄 Dupliquer les lignes critiques
-    # df_tribue = dupliquer_lignes_critiques(df_tribue)
+    # df_tribu = dupliquer_lignes_critiques(df_tribu)
 
     # 🖼️ Chargement du modèle PowerPoint
     prs = Presentation("exemple_chronogramme.pptx")
@@ -296,6 +307,6 @@ for tribue in tribues:
 
     # 💾 Sauvegarde du fichier
     date_str = pd.Timestamp.now().strftime("%Y%m%d")
-    nom_fichier = f"{output_dir}/{date_str}_chronogramme_{tribue.replace(' ', '_')}.pptx"
+    nom_fichier = f"{output_dir}/{date_str}_chronogramme_{tribu.replace(' ', '_')}.pptx"
     prs.save(nom_fichier)
-    print(f"✅ Fichier généré pour {tribue} : {nom_fichier}")
+    print(f"✅ Fichier généré pour {tribu} : {nom_fichier}")

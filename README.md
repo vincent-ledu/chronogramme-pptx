@@ -90,6 +90,7 @@ Options:
 - `--config config.json`: Indique le fichier de configuration à utiliser
 - `--out "c:\temp\chronogramme"`: Indique le répertoire de sortie à utiliser pour les fichiers PPTX
 - `--template "c:\temp\template.pptx"`: Indique le modèle powerpoint à utiliser
+- `--tribu "nom de la tribu"`: Indique une tribu en particulier et ne générer que ce support
 
 ---
 
