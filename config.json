@@ -16,6 +16,8 @@
   "icone_restauration": "restauration.png",
   "icone_resynchro": "resynchro.png",
   "icone_kube": "kubernetes.png",
+  "icone_check_green": "check_green.png",
+  "icone_check_blue": "check_blue.png",
   "icone_z": "z.png",
   "icone_critique": "critique.png",
   "icone_check": "check.png",

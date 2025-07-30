@@ -9,6 +9,7 @@ import os
 import json
 import argparse
 import re
+import hashlib
 
 # 🛠️ Argument parser
 parser = argparse.ArgumentParser(description="Génère des slides chronogrammes par tribue.")
@@ -98,6 +99,15 @@ def dupliquer_lignes_critiques(df):
     lignes_critiques[col_planif] = lignes_critiques[col_planif].apply(trimestre_plus_1)
     return pd.concat([df, lignes_critiques], ignore_index=True)
 
+def generate_color_from_string(s):
+    h = hashlib.md5(s.encode()).hexdigest()
+    r = int(h[0:2], 16)
+    g = int(h[2:4], 16)
+    b = int(h[4:6], 16)
+    # optionnel : éclaircir un peu
+    if r + g + b < 300:
+        r, g, b = min(255, r + 60), min(255, g + 60), min(255, b + 60)
+    return RGBColor(r, g, b)
 
 # 🌀 Boucle principale par tribue
 for tribue in tribues:
@@ -120,9 +130,6 @@ for tribue in tribues:
     if exclues_count > 0:
         print(f"ℹ️  {exclues_count} lignes(s) exclue(s) pour '{tribue}' car 'réalisé' = NA ou NR")
 
-    # 🔄 Dupliquer les lignes critiques
-    df_tribue = dupliquer_lignes_critiques(df_tribue)
-    
     # 🔢 Tri temporel
     df_tribue["__sort_key"] = df_tribue[col_planif].apply(trimestre_to_sort_key)
 
@@ -145,6 +152,9 @@ for tribue in tribues:
         })
         .reset_index()
     )
+
+    # 🔄 Dupliquer les lignes critiques
+    # df_tribue = dupliquer_lignes_critiques(df_tribue)
 
     # 🖼️ Chargement du modèle PowerPoint
     prs = Presentation("exemple_chronogramme.pptx")
@@ -179,7 +189,12 @@ for tribue in tribues:
             for i, t in enumerate(types)
         }
 
-        color = squad_color_map.get(squad, RGBColor(160, 160, 160))
+        if squad in squad_color_map:
+            color = squad_color_map[squad]
+        else:
+            color = generate_color_from_string(squad)
+            squad_color_map[squad] = color  # mémorise pour réutilisation
+
         complement = ""
 
         # 🧭 Positionnement sur le slide
