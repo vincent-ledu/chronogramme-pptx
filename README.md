@@ -83,7 +83,12 @@ Extrait d'exemple :
 python generate_chronogrammes.py planning.xlsx
 ```
 
-3. Les fichiers `.pptx` seront générés dans `output/`
+3. Les fichiers `.pptx` seront générés par défaut dans `.`
+
+Options:
+
+- `--config config.json`: Indique le fichier de configuration à utiliser
+- `--out "c:\temp\chronogramme"`: Indique le répertoire de sortie à utiliser pour les fichiers PPTX
 
 ---
 

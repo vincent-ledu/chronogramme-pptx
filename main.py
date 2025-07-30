@@ -15,11 +15,16 @@ import hashlib
 parser = argparse.ArgumentParser(description="Génère des slides chronogrammes par tribue.")
 parser.add_argument("excel_file", help="Fichier Excel des données")
 parser.add_argument("--config", default="config.json", help="Fichier de configuration JSON")
+parser.add_argument("--out", default=".", help="Répertoire de sortie pour les fichiers PPTX")
 args = parser.parse_args()
 
 # 📂 Chargement des fichiers
 excel_path = args.excel_file
 config_path = args.config
+output_dir = args.out
+if not os.path.exists(output_dir):
+    print(f"📂 Répertoire de sortie inexistant, création : {output_dir}")
+    os.makedirs(output_dir)
 
 if not os.path.exists(config_path):
     print(f"❌ Fichier de configuration introuvable : {config_path}")
@@ -285,6 +290,7 @@ for tribue in tribues:
                 run.font.color.rgb = RGBColor(255, 255, 255)
 
     # 💾 Sauvegarde du fichier
-    nom_fichier = f"output/chronogramme_{tribue.replace(' ', '_')}.pptx"
+    date_str = pd.Timestamp.now().strftime("%Y%m%d")
+    nom_fichier = f"{output_dir}/{date_str}_chronogramme_{tribue.replace(' ', '_')}.pptx"
     prs.save(nom_fichier)
     print(f"✅ Fichier généré pour {tribue} : {nom_fichier}")
