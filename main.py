@@ -16,26 +16,31 @@ parser = argparse.ArgumentParser(description="Génère des slides chronogrammes 
 parser.add_argument("excel_file", help="Fichier Excel des données")
 parser.add_argument("--config", default="config.json", help="Fichier de configuration JSON")
 parser.add_argument("--out", default=".", help="Répertoire de sortie pour les fichiers PPTX")
+parser.add_argument("--template", default="exemple_chronogramme.pptx", help="Powerpoint modèle pour les slides")
 args = parser.parse_args()
 
 # 📂 Chargement des fichiers
 excel_path = args.excel_file
 config_path = args.config
 output_dir = args.out
+template_path = args.template
+
+# 📁 Vérification des chemins
+if not os.path.exists(template_path):
+    print(f"❌ Modèle PowerPoint introuvable : {template_path}")
+    sys.exit(1)
+if not os.path.exists(excel_path):
+    print(f"❌ Fichier Excel introuvable : {excel_path}")
+    sys.exit(1)
 if not os.path.exists(output_dir):
     print(f"📂 Répertoire de sortie inexistant, création : {output_dir}")
     os.makedirs(output_dir)
-
 if not os.path.exists(config_path):
     print(f"❌ Fichier de configuration introuvable : {config_path}")
     sys.exit(1)
 
 with open(config_path, "r", encoding="utf-8") as f:
     config = json.load(f)
-
-if not os.path.exists(excel_path):
-    print(f"📄 Fichier Excel introuvable : {excel_path}")
-    sys.exit(1)
 
 # 📊 Noms des colonnes
 col_produit = config["colonne_produit"]
