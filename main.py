@@ -10,14 +10,16 @@ import json
 import argparse
 import re
 import hashlib
+from datetime import datetime
 
 # 🛠️ Argument parser
 parser = argparse.ArgumentParser(description="Génère des slides chronogrammes par tribu.")
 parser.add_argument("excel_file", help="Fichier Excel des données")
-parser.add_argument("--config", default="config.json", help="Fichier de configuration JSON")
-parser.add_argument("--out", default=".", help="Répertoire de sortie pour les fichiers PPTX")
-parser.add_argument("--template", default="exemple_chronogramme.pptx", help="Powerpoint modèle pour les slides")
+parser.add_argument("--config", default="config.json", help="Fichier de configuration JSON (optionnel)")
+parser.add_argument("--out", default=".", help="Répertoire de sortie pour les fichiers PPTX (optionnel)")
+parser.add_argument("--template", default="exemple_chronogramme.pptx", help="Powerpoint modèle pour les slides (optionnel)")
 parser.add_argument("--tribu", help="Nom exact de la tribu à traiter (optionnel)")
+parser.add_argument("--no-stats", help="Ne pas générer les stats en bas de slides (optionnel)")
 
 args = parser.parse_args()
 
@@ -26,6 +28,7 @@ excel_path = args.excel_file
 config_path = args.config
 output_dir = args.out
 template_path = args.template
+no-stats = args.no_stats
 
 # 📁 Vérification des chemins
 if not os.path.exists(template_path):
@@ -304,6 +307,51 @@ for tribu in tribus:
                 run.font.size = Pt(10)
                 run.font.bold = True
                 run.font.color.rgb = RGBColor(255, 255, 255)
+
+    # 🧮 STATISTIQUES
+    if not no_stats:
+        now = datetime.now()
+        annee_courante = now.year
+        mois_courant = now.month
+        trimestre_courant = (mois_courant - 1) // 3 + 1
+        clef_trimestre_actuel = annee_courante * 10 + trimestre_courant
+
+        nb_total = len(fusionnees)
+        nb_realise = sum(all(r == "oui" for r in row[col_realise]) for _, row in fusionnees.iterrows())
+        nb_kube = sum(row[col_kube] == 1 for _, row in fusionnees.iterrows())
+        nb_z = sum(row[col_z] == 1 for _, row in fusionnees.iterrows())
+        nb_mosart = sum(row[col_mosart] == 1 for _, row in fusionnees.iterrows())
+
+        # ⏱️ En retard = non réalisé et trimestre passé
+        nb_retard = 0
+        for _, row in fusionnees.iterrows():
+            if not all(r == "oui" for r in row[col_realise]):
+                sort_key = trimestre_to_sort_key(row[col_planif])
+                if sort_key < clef_trimestre_actuel:
+                    nb_retard += 1
+
+        # 🖊️ Ajout de la zone de texte de stats
+        stats_text = (
+            f"📦 Réalisé : {nb_realise}/{nb_total}\n"
+            f"🐳 Full Kube : {nb_kube}/{nb_total}\n"
+            f"🟣 Full Z : {nb_z}/{nb_total}\n"
+            f"🧩 Mosart : {nb_mosart}/{nb_total}\n"
+            f"⏱️ En retard : {nb_retard}/{nb_total}"
+        )
+
+        textbox_stats = slide.shapes.add_textbox(
+            left=Inches(8.5),
+            top=Inches(0.8),
+            width=Inches(3.5),
+            height=Inches(1.5)
+        )
+        tf = textbox_stats.text_frame
+        tf.text = stats_text
+        for paragraph in tf.paragraphs:
+            paragraph.alignment = PP_ALIGN.LEFT
+            for run in paragraph.runs:
+                run.font.size = Pt(10)
+
 
     # 💾 Sauvegarde du fichier
     date_str = pd.Timestamp.now().strftime("%Y%m%d")
