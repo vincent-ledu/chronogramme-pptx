@@ -28,7 +28,7 @@ excel_path = args.excel_file
 config_path = args.config
 output_dir = args.out
 template_path = args.template
-no-stats = args.no_stats
+no_stats = args.no_stats
 
 # 📁 Vérification des chemins
 if not os.path.exists(template_path):
@@ -340,8 +340,8 @@ for tribu in tribus:
         )
 
         textbox_stats = slide.shapes.add_textbox(
-            left=Inches(8.5),
-            top=Inches(0.8),
+            left=Inches(11),
+            top=Inches(6.5),
             width=Inches(3.5),
             height=Inches(1.5)
         )
