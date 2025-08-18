@@ -138,17 +138,17 @@ for tribu in tribus:
     df_tribu = df[df[col_tribu] == tribu].copy()
 
     # 🧼 Nettoyage des colonnes booléennes
-    bool_cols = [col_kube, col_critique, col_mosart, col_decom, col_validate, col_z]
+    bool_cols = [col_kube, col_critique, col_mosart, col_decom, col_realise, col_z]
     for col in bool_cols:
         df_tribu[col] = df_tribu[col].astype(str).str.strip().str.lower().map(lambda x: x == "oui" or x.startswith("lot")).astype(int)
 
     # 🧱 Nettoyage des colonnes texte
     df_tribu[col_type] = df_tribu[col_type].fillna("")
-    df_tribu[col_realise] = df_tribu[col_realise].fillna("")
+    df_tribu[col_validate] = df_tribu[col_validate].fillna("")
 
     # 🚫 Exclusion des lignes avec "NA" ou "NR"
     initial_count = len(df_tribu)
-    df_tribu = df_tribu[~df_tribu[col_realise].astype(str).str.strip().str.upper().isin(["NR", "NA"])]
+    df_tribu = df_tribu[~df_tribu[col_validate].astype(str).str.strip().str.upper().isin(["NR", "NA"])]
     exclues_count = initial_count - len(df_tribu)
     
     if exclues_count > 0:
@@ -169,10 +169,10 @@ for tribu in tribus:
             col_mosart: "max",
             col_critique: "max",
             col_decom: "max",
-            col_validate: "max",
+            col_realise: "max",
             col_z: "max",
             col_type: lambda x: list(x),
-            col_realise: lambda x: list(x)
+            col_validate: lambda x: list(x)
         })
         .reset_index()
     )
@@ -203,13 +203,13 @@ for tribu in tribus:
         mosart = row[col_mosart] == 1
         decom = row[col_decom] == 1
         critique = row[col_critique] == 1
-        validate = row[col_validate] == 1
+        realises = row[col_realise] == 1
         full_z = row[col_z] == 1
         types = [str(t).strip().lower() for t in row[col_type]]
-        realises = [str(r).strip().lower() for r in row[col_realise]]
+        validate = [str(r).strip().lower() for r in row[col_validate]]
 
         types_realises = {
-            t: (realises[i] == "oui" if i < len(realises) else False)
+            t: (validate[i] == "oui" if i < len(validate) else False)
             for i, t in enumerate(types)
         }
 
@@ -272,10 +272,10 @@ for tribu in tribus:
             target_slide.shapes.add_picture(icone_resynchro, left + width - Inches(0.2), bot_top, Inches(0.2), Inches(0.2))
 
         # ✅ Validation
-        if validate:
-            target_slide.shapes.add_picture(icone_check_blue, left + width / 2 - Inches(0.22), bot_top, Inches(0.22), Inches(0.22))
         if all(types_realises.get(t, False) for t in types if t):
             target_slide.shapes.add_picture(icone_check_green, left + width / 2 + Inches(0.22), bot_top, Inches(0.22), Inches(0.22))
+        if realises:
+            target_slide.shapes.add_picture(icone_check_blue, left + width / 2 - Inches(0.22), bot_top, Inches(0.22), Inches(0.22))
 
         # 🔧 Autres icônes spécifiques
         if full_kube:
@@ -317,15 +317,16 @@ for tribu in tribus:
         clef_trimestre_actuel = annee_courante * 10 + trimestre_courant
 
         nb_total = len(fusionnees)
-        nb_realise = sum(all(r == "OUI" for r in row[col_realise]) for _, row in fusionnees.iterrows())
+        nb_validate = sum(all(r == "OUI" for r in row[col_validate]) for _, row in fusionnees.iterrows())
+        nb_realise = sum(row[col_realise] == 1 for _, row in fusionnees.iterrows())
         nb_kube = sum(row[col_kube] == 1 for _, row in fusionnees.iterrows())
         nb_z = sum(row[col_z] == 1 for _, row in fusionnees.iterrows())
         nb_mosart = sum(row[col_mosart] == 1 for _, row in fusionnees.iterrows())
 
-        # ⏱️ En retard = non réalisé et trimestre passé
+        # ⏱️ En retard = non validé et trimestre passé
         nb_retard = 0
         for _, row in fusionnees.iterrows():
-            if not all(r == "oui" for r in row[col_realise]):
+            if not all(r == "oui" for r in row[col_validate]):
                 sort_key = trimestre_to_sort_key(row[col_planif])
                 if sort_key < clef_trimestre_actuel:
                     nb_retard += 1
@@ -333,9 +334,10 @@ for tribu in tribus:
         # 🖊️ Ajout de la zone de texte de stats
         stats_text = (
             f"📦 Réalisé : {nb_realise}/{nb_total}\n"
+            f"✅ Validé : {nb_validate}/{nb_total}\n"
             f"🐳 Full Kube : {nb_kube}/{nb_total}\n"
-            f"🟣 Full Z : {nb_z}/{nb_total}\n"
-            f"🧩 Mosart : {nb_mosart}/{nb_total}\n"
+            f"🎛️ Full Z : {nb_z}/{nb_total}\n"
+            f"🎻 Mosart : {nb_mosart}/{nb_total}\n"
             f"⏱️ En retard : {nb_retard}/{nb_total}"
         )
 
