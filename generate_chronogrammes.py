@@ -317,7 +317,7 @@ for tribu in tribus:
         clef_trimestre_actuel = annee_courante * 10 + trimestre_courant
 
         nb_total = len(fusionnees)
-        nb_realise = sum(all(r == "oui" for r in row[col_realise]) for _, row in fusionnees.iterrows())
+        nb_realise = sum(all(r == "OUI" for r in row[col_realise]) for _, row in fusionnees.iterrows())
         nb_kube = sum(row[col_kube] == 1 for _, row in fusionnees.iterrows())
         nb_z = sum(row[col_z] == 1 for _, row in fusionnees.iterrows())
         nb_mosart = sum(row[col_mosart] == 1 for _, row in fusionnees.iterrows())
@@ -341,7 +341,7 @@ for tribu in tribus:
 
         textbox_stats = slide.shapes.add_textbox(
             left=Inches(11),
-            top=Inches(6.5),
+            top=Inches(5.5),
             width=Inches(3.5),
             height=Inches(1.5)
         )
